@@ -1,0 +1,12 @@
+[
+  {
+    "task": "Summarize",
+    "input": {"text": "First block text"},
+    "result": "Done"
+  },
+  {
+    "task": "Classify",
+    "input": {"text": "Second block text"},
+    "result": "Success"
+  }
+]

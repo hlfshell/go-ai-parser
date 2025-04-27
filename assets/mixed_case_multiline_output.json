@@ -1,0 +1,8 @@
+{
+  "context": "This is a test",
+  "intention": "To CHECK",
+  "role": "AGENT",
+  "action": "process_data",
+  "outcome": "Success",
+  "notes": "This is a multiline\n  note that continues on the next line."
+}

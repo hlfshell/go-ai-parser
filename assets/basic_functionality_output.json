@@ -1,0 +1,6 @@
+{
+  "action": "process_data",
+  "action input": {"input_files": ["a.txt", "b.txt"]},
+  "thought": "Processing files",
+  "result": "Done"
+}

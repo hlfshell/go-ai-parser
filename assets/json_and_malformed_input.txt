@@ -1,0 +1,3 @@
+Config: {"threshold": 0.8, "enabled": true}
+Data: {malformed json here}
+Description: This entry has both JSON and malformed JSON.
