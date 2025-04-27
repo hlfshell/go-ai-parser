@@ -1,7 +1,7 @@
 // Package ai_parser provides tools for parsing stochastic LLM outputs into structured data for agentic use.
 // It is designed to be imported as a Go module in other AI projects, supporting flexible label definitions,
 // multi-line and JSON fields, required/dependency validation, and robust handling of LLM output quirks.
-package ai_parser
+package arkaineparser
 
 import (
 	"encoding/json" // For JSON field parsing
@@ -131,8 +131,8 @@ func (p *Parser) Parse(text string) (map[string]interface{}, []string) {
 	}
 
 	// Step 4: Process results: parse JSON fields, flatten single-value lists, collect errors
-	results, errors := p.processResults(data)
-	return results, errors
+	results, errList := p.processResults(data)
+	return results, errList
 }
 
 // cleanText removes markdown code blocks (```...```) and inline code (`...`) from the input text.
@@ -199,7 +199,7 @@ func finalizeEntry(data map[string][]string, labelName, entry string) {
 // processResults parses JSON fields, flattens single-value lists, and collects errors.
 func (p *Parser) processResults(rawData map[string][]string) (map[string]interface{}, []string) {
 	results := make(map[string]interface{})
-	errors := []string{}
+	errList := []string{}
 	for labelName, entries := range rawData {
 		labelDef := p.labelMap[labelName]
 		parsedEntries := []interface{}{}
@@ -213,7 +213,7 @@ func (p *Parser) processResults(rawData map[string][]string) (map[string]interfa
 				var obj interface{}
 				if err := importJSONUnmarshal([]byte(entry), &obj); err != nil {
 					parsedEntries = append(parsedEntries, entry)
-					errors = append(errors, "JSON error in '"+labelDef.Name+"': "+err.Error())
+					errList = append(errList, "JSON error in '"+labelDef.Name+"': "+err.Error())
 				} else {
 					parsedEntries = append(parsedEntries, obj)
 				}
@@ -237,8 +237,8 @@ func (p *Parser) processResults(rawData map[string][]string) (map[string]interfa
 		}
 	}
 	// Validate required fields and dependencies
-	errors = append(errors, p.validateDependencies(rawData)...)
-	return results, errors
+	errList = append(errList, p.validateDependencies(rawData)...)
+	return results, errList
 }
 
 // importJSONUnmarshal wraps json.Unmarshal for clarity and future flexibility.
@@ -248,14 +248,14 @@ func importJSONUnmarshal(data []byte, v interface{}) error {
 
 // validateDependencies checks required and required_with constraints.
 func (p *Parser) validateDependencies(data map[string][]string) []string {
-	errors := []string{}
+	errList := []string{}
 	for _, label := range p.labels {
 		key := strings.ToLower(label.Name)
 		entries, present := data[key]
 		// Treat empty string or empty slice as missing
 		missing := !present || len(entries) == 0 || (len(entries) == 1 && entries[0] == "")
 		if label.Required && missing {
-			errors = append(errors, "'"+label.Name+"' is required")
+			errList = append(errList, "'"+label.Name+"' is required")
 		}
 		if len(label.RequiredWith) > 0 {
 			for _, dep := range label.RequiredWith {
@@ -265,13 +265,13 @@ func (p *Parser) validateDependencies(data map[string][]string) []string {
 				// Enforce dependency if this label is present (even if empty)
 				if present {
 					if depMissing {
-						errors = append(errors, "'"+label.Name+"' requires '"+dep+"'")
+						errList = append(errList, "'"+label.Name+"' requires '"+dep+"'")
 					}
 				}
 			}
 		}
 	}
-	return errors
+	return errList
 }
 
 // ParseBlocks parses the text into blocks, splitting at the block start label.
@@ -296,9 +296,9 @@ func (p *Parser) ParseBlocks(text string) ([]map[string]interface{}, []string) {
 	lines := splitAndTrimLines(cleaned)
 
 	var (
-		blocks         [][]string // Each block is a slice of lines
-		currentBlock   []string
-		inBlock        bool
+		blocks       [][]string // Each block is a slice of lines
+		currentBlock []string
+		inBlock      bool
 	)
 
 	// Iterate through lines, splitting at each new block start
@@ -323,20 +323,17 @@ func (p *Parser) ParseBlocks(text string) ([]map[string]interface{}, []string) {
 	// Parse each block using the normal Parse logic
 	var (
 		results []map[string]interface{}
-		errors  []string
+		errList []string
 	)
 	for _, blockLines := range blocks {
 		blockText := strings.Join(blockLines, "\n")
-		result, errs := p.Parse(blockText)
-		if len(errs) > 0 {
-			for _, e := range errs {
-				errors = append(errors, e)
-			}
+		result, blockErr := p.Parse(blockText)
+		if len(blockErr) > 0 {
+			errList = append(errList, blockErr...)
 		}
 		results = append(results, result)
 	}
-	return results, errors
+	return results, errList
 }
-
 
 // Additional helpers and logic to be implemented.
